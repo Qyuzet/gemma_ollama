@@ -5,6 +5,51 @@ This backend API provides an interface to interact with the "Gemma" model using 
 
 ---
 
+## FRONTEND
+
+### **Installation Requirements**
+
+To run the frontend part of the project are also required:
+
+1. **flutter**
+   open-source framework based on dart
+2. **pubspec.yaml**
+   Dependencies are the list of packages that you can immediately download throgh running: **flutter pub get**
+```
+   dependencies:
+  flutter:
+    sdk: flutter
+  sqflite: ^2.4.0  # For database operations
+  path_provider: ^2.0.0  # To find the correct path for the database
+  http: ^0.13.3  # For chatbot API calls (if needed)
+  auto_route: ^7.8.4
+  dio: ^5.4.1
+  equatable: ^2.0.5
+  flutter_bloc: ^8.1.4
+  get_it: ^7.6.7
+  injectable: ^2.3.2
+```
+   Dev dependencies are the environment and running package for the whole creation of flutter environment
+```
+dev_dependencies:
+  auto_route_generator: ^7.3.2
+  build_runner: ^2.4.8
+  injectable_generator: ^2.4.1
+  flutter_test:
+    sdk: flutter
+```
+
+Create a new flutter project and based it off here and so on:
+```
+lib/
+├── chat_assistant.dart
+└──home_page.dart
+└── main.dart
+└── note_editor.dart
+```
+
+---
+
 
 
 ## BACKEND
@@ -193,3 +238,5 @@ To run this backend API, the following Python packages are required:
 ---
 
 This API provides a simple yet powerful backend to integrate with the Gemma model and interact with it through messages. It supports JSON communication and can be extended or customized based on specific needs.
+
+**Don't forget to follow guidelines that we shared**
