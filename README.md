@@ -5,6 +5,14 @@ This backend API provides an interface to interact with the "Gemma" model using 
 
 ---
 
+
+## Codebase Structure
+```
+flutter_project/
+├── frontend
+└── backend
+```
+
 ## FRONTEND
 
 ### **Installation Requirements**
