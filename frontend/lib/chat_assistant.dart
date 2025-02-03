@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
 
 class ChatAssistantPage extends StatefulWidget {
   @override
@@ -11,6 +12,8 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
   final TextEditingController _messageController = TextEditingController();
   List<Map<String, String>> _messages = [];
   bool _isLoading = false;
+  String _currentStreamingResponse = '';
+  Timer? _streamTimer;
 
   Future<void> sendMessage() async {
     if (_messageController.text.isEmpty) return;
@@ -19,61 +22,93 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
     setState(() {
       _messages.add({'role': 'user', 'content': userMessage});
       _isLoading = true;
+      _currentStreamingResponse = ''; // Reset streaming response
     });
 
     try {
-      // Debug: Printing the message sent to backend
-      print("Sending message to the backend: $userMessage");
-
-      // Sending HTTP POST request
       final response = await http.post(
-        Uri.parse('http://10.25.85.106:11434/api/chat'), // Use the correct IP address
+        Uri.parse('http://127.0.0.1:11434/api/chat'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
+          'model':'gemma2:latest',
           'messages': [
             {'role': 'user', 'content': userMessage}
           ],
         }),
       );
 
-
-      // Debug: Printing response details
-      print("Response Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
-
       if (response.statusCode == 200) {
-        final decodedBody = jsonDecode(response.body);
+        // Split the response body into individual JSON lines
+        final jsonLines = response.body.trim().split('\n');
 
-        if (decodedBody != null && decodedBody.containsKey('message')) {
-          final gemmaResponse = decodedBody['message']['content'];
-          setState(() {
-            _messages.add({'role': 'assistant', 'content': gemmaResponse});
-          });
-        } else {
-          print("Error: No content found in response message");
-          setState(() {
-            _messages.add({'role': 'assistant', 'content': "No content in message"});
-          });
-        }
+        // Start streaming the response
+        _streamResponseWords(jsonLines);
       } else {
-        print("Failed to connect. HTTP Status Code: ${response.statusCode}");
         setState(() {
           _messages.add({'role': 'error', 'content': 'HTTP Status Code: ${response.statusCode}'});
+          _isLoading = false;
         });
       }
     } catch (e) {
-      // Debug: Printing error when connection fails
-      print("Error connecting to the backend: $e");
       setState(() {
         _messages.add({'role': 'error', 'content': 'Failed to connect to the API: $e'});
-      });
-    } finally {
-      setState(() {
         _isLoading = false;
       });
     }
 
     _messageController.clear();
+  }
+
+  void _streamResponseWords(List<String> jsonLines) {
+    // Collect all words from the response
+    List<String> allWords = [];
+    for (var line in jsonLines) {
+      try {
+        final decodedLine = jsonDecode(line);
+        if (decodedLine != null &&
+            decodedLine['message'] != null &&
+            decodedLine['message']['content'] != null) {
+          // Split the content into words
+          allWords.addAll(decodedLine['message']['content'].toString().split(' '));
+        }
+      } catch (e) {
+        print("Error parsing JSON line: $e");
+      }
+    }
+
+    // Create a timer to stream words one by one
+    int currentWordIndex = 0;
+    _streamTimer = Timer.periodic(Duration(milliseconds: 50), (timer) {
+      if (currentWordIndex < allWords.length) {
+        setState(() {
+          _currentStreamingResponse += allWords[currentWordIndex] + ' ';
+
+          // Update the last message with the current streaming response
+          if (_messages.isNotEmpty && _messages.last['role'] == 'assistant') {
+            _messages.last['content'] = _currentStreamingResponse;
+          } else {
+            _messages.add({
+              'role': 'assistant',
+              'content': _currentStreamingResponse
+            });
+          }
+        });
+        currentWordIndex++;
+      } else {
+        // Stop the timer when all words are displayed
+        timer.cancel();
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Cancel the timer if the widget is disposed
+    _streamTimer?.cancel();
+    super.dispose();
   }
 
   @override
